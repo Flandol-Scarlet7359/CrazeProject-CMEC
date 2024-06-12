@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>現在の日時</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+        .datetime {
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 1.5rem;
+            position: absolute;
+            cursor: move;
+        }
+        .settings-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .settings-dialog {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .settings-dialog label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .settings-dialog input[type="color"],
+        .settings-dialog input[type="range"] {
+            margin-bottom: 20px;
+        }
+        .settings-dialog button {
+            padding: 10px 20px;
+            background-color: #28A745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="datetime" id="datetime"></div>
+    <button class="settings-button" onclick="toggleSettings()">設定</button>
+    <div class="settings-dialog" id="settings-dialog">
+        <label for="background-color">背景色:</label>
+        <input type="color" id="background-color" value="#f0f0f0">
+        <label for="scale">スケール:</label>
+        <input type="range" id="scale" min="0.5" max="2" step="0.1" value="1">
+        <button onclick="applySettings()">適用</button>
+    </div>
+
+    <script>
+        function updateDateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            const formattedDateTime = `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日 ${hours.toString().padStart(2, '0')}時${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒`;
+
+            document.getElementById('datetime').textContent = formattedDateTime;
+        }
+
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        const datetimeDiv = document.getElementById('datetime');
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        datetimeDiv.addEventListener('mousedown', (e) => {
+            if (e.ctrlKey && e.button === 0) { // Ctrl + Left Mouse Button
+                isDragging = true;
+                offsetX = e.clientX - datetimeDiv.getBoundingClientRect().left;
+                offsetY = e.clientY - datetimeDiv.getBoundingClientRect().top;
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+        });
+
+        function onMouseMove(e) {
+            if (isDragging) {
+                datetimeDiv.style.left = `${e.clientX - offsetX}px`;
+                datetimeDiv.style.top = `${e.clientY - offsetY}px`;
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        function toggleSettings() {
+            const settingsDialog = document.getElementById('settings-dialog');
+            settingsDialog.style.display = settingsDialog.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function applySettings() {
+            const backgroundColor = document.getElementById('background-color').value;
+            const scale = document.getElementById('scale').value;
+
+            document.body.style.backgroundColor = backgroundColor;
+            datetimeDiv.style.transform = `scale(${scale})`;
+            toggleSettings();
+        }
+    </script>
+</body>
+</html>

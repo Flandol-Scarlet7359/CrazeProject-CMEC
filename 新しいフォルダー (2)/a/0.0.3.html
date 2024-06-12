@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>現在の日時</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+        .datetime {
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 1.5rem;
+            position: absolute;
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+    <div class="datetime" id="datetime"></div>
+
+    <script>
+        function updateDateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            const formattedDateTime = `${year}年${month.toString().padStart(2, '0')}月${date.toString().padStart(2, '0')}日 ${hours.toString().padStart(2, '0')}時${minutes.toString().padStart(2, '0')}分${seconds.toString().padStart(2, '0')}秒`;
+
+            document.getElementById('datetime').textContent = formattedDateTime;
+        }
+
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        const datetimeDiv = document.getElementById('datetime');
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        datetimeDiv.addEventListener('mousedown', (e) => {
+            if (e.ctrlKey && e.button === 0) { // Ctrl + Left Mouse Button
+                isDragging = true;
+                offsetX = e.clientX - datetimeDiv.getBoundingClientRect().left;
+                offsetY = e.clientY - datetimeDiv.getBoundingClientRect().top;
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+        });
+
+        function onMouseMove(e) {
+            if (isDragging) {
+                datetimeDiv.style.left = `${e.clientX - offsetX}px`;
+                datetimeDiv.style.top = `${e.clientY - offsetY}px`;
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+    </script>
+</body>
+</html>

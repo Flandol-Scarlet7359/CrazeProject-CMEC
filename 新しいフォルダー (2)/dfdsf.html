@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        /* 基本のスタイル */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #clock {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        #settingsDialog {
+            display: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .draggable {
+            position: absolute;
+            cursor: grab;
+        }
+        .timer, #calendar, #batteryStatus {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .timer input[type="number"] {
+            width: 50px;
+        }
+        #calendar table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #calendar th, #calendar td {
+            border: 1px solid #ccc;
+            text-align: center;
+            padding: 5px;
+        }
+        #calendar .today {
+            background-color: yellow;
+        }
+        #batteryStatus {
+            display: flex;
+            align-items: center;
+        }
+        #batteryLevelBar {
+            width: 100px;
+            height: 10px;
+            background-color: green;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock" class="draggable"></div>
+    <button id="timeFormatButton">24時間表記</button>
+    <button id="settingsButton">設定</button>
+    <button onclick="addTimer()">タイマーを追加</button>
+    <button id="importModButton">MODをインポート</button>
+    <div id="calendar" class="draggable"></div>
+    <div id="batteryStatus" class="draggable">
+        バッテリー: <span id="batteryPercentage"></span>
+        <div id="batteryLevelBar"></div>
+    </div>
+    <input type="file" id="importFileInput" style="display:none">
+    <div id="settingsDialog">
+        <button id="closeSettingsButton">閉じる</button>
+        <div>
+            <label>スケール: <input type="range" id="scaleRange" min="50" max="150" value="100"></label>
+        </div>
+        <div>
+            <label>背景色: <input type="color" id="bgColorPicker"></label>
+        </div>
+        <button onclick="resetSettings()">リセット</button>
+        <button onclick="exportSettings()">設定をエクスポート</button>
+        <button onclick="importSettings()">設定をインポート</button>
+    </div>
+
+    <script>
+        let is24HourFormat = true;
+        let draggedElement = null;
+        let offsetX = 0, offsetY = 0;
+        let removedElements = JSON.parse(localStorage.getItem('removedElements')) || [];
+
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            let period = '';
+
+            if (!is24HourFormat) {
+                period = hours >= 12 ? ' PM' : ' AM';
+                hours = hours % 12 || 12;
+            }
+
+            const formattedDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+            const formattedTime = `${hours}:${minutes}:${seconds}${period}`;
+            document.getElementById('clock').textContent = `${formattedDate} ${formattedTime}`;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        document.getElementById('timeFormatButton').addEventListener('click', () => {
+            is24HourFormat = !is24HourFormat;
+            document.getElementById('timeFormatButton').textContent = is24HourFormat ? '24時間表記' : '12時間表記';
+            updateClock();
+            localStorage.setItem('is24HourFormat', is24HourFormat);
+        });
+
+        document.getElementById('settingsButton').addEventListener('click', () => {
+            document.getElementById('settingsDialog').style.display = 'block';
+        });
+
+        document.getElementById('closeSettingsButton').addEventListener('click', () => {
+            document.getElementById('settingsDialog').style.display = 'none';
+        });
+
+        document.getElementById('scaleRange').addEventListener('input', (e) => {
+            const scale = e.target.value;
+            document.body.style.fontSize = `${scale}%`;
+            localStorage.setItem('scale', scale);
+        });
+
+        document.getElementById('bgColorPicker').addEventListener('input', (e) => {
+            const bgColor = e.target.value;
+            document.body.style.backgroundColor = bgColor;
+            localStorage.setItem('bgColor', bgColor);
+        });
+
+        function resetSettings() {
+            localStorage.removeItem('bgColor');
+            localStorage.removeItem('scale');
+            localStorage.removeItem('is24HourFormat');
+            document.body.style.backgroundColor = '';
+            document.body.style.fontSize = '';
+            document.getElementById('timeFormatButton').textContent = '24時間表記';
+            is24HourFormat = true;
+            updateClock();
+        }
+
+        function exportSettings() {
+            const settings = {
+                bgColor: localStorage.getItem('bgColor'),
+                scale: localStorage.getItem('scale'),
+                is24HourFormat: localStorage.getItem('is24HourFormat')
+            };
+            const data = JSON.stringify(settings);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'settings.cmec1';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importSettings() {
+            document.getElementById('importFileInput').click();
+        }
+
+        document.getElementById('importFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const extension = file.name.split('.').pop();
+
+                if (extension === 'cmec1') {
+                    const settings = JSON.parse(contents);
+                    if (settings.bgColor) {
+                        document.body.style.backgroundColor = settings.bgColor;
+                        localStorage.setItem('bgColor', settings.bgColor);
+                    }
+                    if (settings.scale) {
+                        document.body.style.fontSize = `${settings.scale}%`;
+                        localStorage.setItem('scale', settings.scale);
+                    }
+                    if (settings.is24HourFormat !== null) {
+                        is24HourFormat = JSON.parse(settings.is24HourFormat);
+                        document.getElementById('timeFormatButton').textContent = is24HourFormat ? '24時間表記' : '12時間表記';
+                        updateClock();
+                        localStorage.setItem('is24HourFormat', settings.is24HourFormat);
+                    }
+                } else if (extension === 'cmec2') {
+                    importElementFromCMEC2(contents);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function importElementFromCMEC2(contents) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(contents, 'text/html');
+            const newElement = doc.body.firstElementChild;
+            if (newElement) {
+                document.body.appendChild(newElement);
+                makeElementDraggable(newElement);
+                savePositions();
+            }
+        }
+
+        function makeElementDraggable(element) {
+            element.classList.add('draggable');
+            element.addEventListener('mousedown', (e) => {
+                draggedElement = element;
+                offsetX = e.clientX - draggedElement.getBoundingClientRect().left;
+                offsetY = e.clientY - draggedElement.getBoundingClientRect().top;
+                draggedElement.style.cursor = 'grabbing';
+            });
+        }
+
+        document.querySelectorAll('#clock, .timer, #calendar, #batteryStatus').forEach(el => {
+            if (!removedElements.includes(el.id)) {
+                makeElementDraggable(el);
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (draggedElement) {
+                draggedElement.style.left = `${e.clientX - offsetX}px`;
+                draggedElement.style.top = `${e.clientY - offsetY}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (draggedElement) {
+                draggedElement.style.cursor = 'grab';
+                draggedElement = null;
+                savePositions();
+            }
+        });
+
+        function savePositions() {
+            const positions = {};
+            document.querySelectorAll('.draggable').forEach(el => {
+                positions[el.id] = {
+                    left: el.style.left,
+                    top: el.style.top
+                };
+            });
+            localStorage.setItem('positions', JSON.stringify(positions));
+        }
+
+        function restorePositions() {
+            const positions = JSON.parse(localStorage.getItem('positions')) || {};
+            Object.keys(positions).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.left = positions[id].left;
+                    el.style.top = positions[id].top;
+                }
+            });
+        }
+
+        restorePositions();
+
+        function updateBatteryStatus() {
+            navigator.getBattery().then(battery => {
+                const level = Math.floor(battery.level * 100);
+                document.getElementById('batteryPercentage').textContent = `${level}%`;
+                const bar = document.getElementById('batteryLevelBar');
+                bar.style.width = `${level}%`;
+                bar.style.backgroundColor = level < 20 ? 'red' : level < 50 ? 'yellow' : 'green';
+            });
+        }
+
+        updateBatteryStatus();
+        setInterval(updateBatteryStatus, 60000);
+
+        // Timer
+        function addTimer() {
+            const timer = document.createElement('div');
+            timer.className = 'timer';
+            timer.innerHTML = `
+                <input type="number" value="0" min="0" step="1" style="width: 60px;">
+                <button onclick="startTimer(this.previousElementSibling)">Start</button>
+            `;
+            document.body.appendChild(timer);
+            makeElementDraggable(timer);
+            savePositions();
+        }
+
+        function startTimer(input) {
+            let time = parseInt(input.value, 10);
+            const timerId = setInterval(() => {
+                if (time <= 0) {
+                    clearInterval(timerId);
+                    input.value = 0;
+                } else {
+                    time--;
+                    input.value = time;
+                }
+            }, 1000);
+        }
+
+        // MOD import
+        document.getElementById('importModButton').addEventListener('click', importMod);
+
+        function importMod() {
+            document.getElementById('importFileInput').click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>じゃんけんゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        #result {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        #buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>じゃんけんゲーム</h1>
+    <div id="result">結果を待っています...</div>
+    <div id="buttons">
+        <button onclick="play('rock')">グー</button>
+        <button onclick="play('paper')">パー</button>
+        <button onclick="play('scissors')">チョキ</button>
+    </div>
+
+    <script>
+        const choices = ['rock', 'paper', 'scissors'];
+
+        function play(playerChoice) {
+            const computerChoice = choices[Math.floor(Math.random() * choices.length)];
+            const result = getResult(playerChoice, computerChoice);
+            displayResult(playerChoice, computerChoice, result);
+        }
+
+        function getResult(player, computer) {
+            if (player === computer) {
+                return '引き分け！';
+            } else if ((player === 'rock' && computer === 'scissors') ||
+                (player === 'paper' && computer === 'rock') ||
+                (player === 'scissors' && computer === 'paper')) {
+                return '勝ち！';
+            } else {
+                return '負け！';
+            }
+        }
+
+        function displayResult(player, computer, result) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = `あなた：${player}、コンピュータ：${computer}、${result}`;
+        }
+    </script>
+</body>
+</html>

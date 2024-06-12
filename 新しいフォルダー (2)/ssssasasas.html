@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カスタムツール</title>
+    <style>
+        body {
+            font-size: 100%;
+            background-color: white;
+        }
+        #clock, .timer, #calendar, #batteryStatus {
+            position: absolute;
+            cursor: grab;
+        }
+        #clock {
+            top: 10px;
+            left: 10px;
+        }
+        .today {
+            background-color: yellow;
+        }
+        #settingsDialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #batteryLevelBar {
+            height: 10px;
+            background-color: green;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock"></div>
+    <div id="calendar"></div>
+    <div id="batteryStatus">
+        <span id="batteryPercentage"></span>
+        <div id="batteryLevelBar"></div>
+    </div>
+
+    <div id="settingsDialog">
+        <button id="closeSettingsButton">閉じる</button>
+        <div>
+            <label for="scaleRange">文字の大きさ</label>
+            <input type="range" id="scaleRange" min="50" max="200" value="100">
+        </div>
+        <div>
+            <label for="bgColorPicker">背景色</label>
+            <input type="color" id="bgColorPicker" value="#ffffff">
+        </div>
+        <button id="exportSettingsButton">設定をエクスポート</button>
+        <button id="importSettingsButton">設定をインポート</button>
+        <button id="resetSettingsButton">設定をリセット</button>
+    </div>
+
+    <button id="settingsButton">設定</button>
+    <button id="timeFormatButton">24時間表記</button>
+    <button id="importModButton">MODをインポート</button>
+    <input type="file" id="importFileInput" style="display:none">
+
+    <script>
+        let is24HourFormat = localStorage.getItem('is24HourFormat') === 'true';
+
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            let period = '';
+
+            if (!is24HourFormat) {
+                period = hours >= 12 ? ' PM' : ' AM';
+                hours = hours % 12 || 12;
+            }
+            const formattedDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+            const formattedTime = `${hours}:${minutes}:${seconds}${period}`;
+            document.getElementById('clock').textContent = `${formattedDate} ${formattedTime}`;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        document.getElementById('timeFormatButton').addEventListener('click', () => {
+            is24HourFormat = !is24HourFormat;
+            document.getElementById('timeFormatButton').textContent = is24HourFormat ? '24時間表記' : '12時間表記';
+            updateClock();
+            localStorage.setItem('is24HourFormat', is24HourFormat);
+        });
+
+        document.getElementById('settingsButton').addEventListener('click', () => {
+            document.getElementById('settingsDialog').style.display = 'block';
+        });
+
+        document.getElementById('closeSettingsButton').addEventListener('click', () => {
+            document.getElementById('settingsDialog').style.display = 'none';
+        });
+
+        document.getElementById('scaleRange').addEventListener('input', (e) => {
+            const scale = e.target.value;
+            document.body.style.fontSize = `${scale}%`;
+            localStorage.setItem('scale', scale);
+        });
+
+        document.getElementById('bgColorPicker').addEventListener('input', (e) => {
+            const bgColor = e.target.value;
+            document.body.style.backgroundColor = bgColor;
+            localStorage.setItem('bgColor', bgColor);
+        });
+
+        document.getElementById('exportSettingsButton').addEventListener('click', exportSettings);
+        document.getElementById('importSettingsButton').addEventListener('click', importSettings);
+        document.getElementById('resetSettingsButton').addEventListener('click', resetSettings);
+
+        function resetSettings() {
+            localStorage.removeItem('bgColor');
+            localStorage.removeItem('scale');
+            localStorage.removeItem('is24HourFormat');
+            document.body.style.backgroundColor = '';
+            document.body.style.fontSize = '';
+            document.getElementById('timeFormatButton').textContent = '24時間表記';
+            is24HourFormat = true;
+            updateClock();
+        }
+
+        function exportSettings() {
+            const settings = {
+                bgColor: localStorage.getItem('bgColor'),
+                scale: localStorage.getItem('scale'),
+                is24HourFormat: localStorage.getItem('is24HourFormat')
+            };
+            const data = JSON.stringify(settings);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'settings.cmec1';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importSettings() {
+            document.getElementById('importFileInput').click();
+        }
+
+        document.getElementById('importFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const extension = file.name.split('.').pop();
+
+                if (extension === 'cmec1') {
+                    const settings = JSON.parse(contents);
+                    if (settings.bgColor) {
+                        document.body.style.backgroundColor = settings.bgColor;
+                        localStorage.setItem('bgColor', settings.bgColor);
+                    }
+                    if (settings.scale) {
+                        document.body.style.fontSize = `${settings.scale}%`;
+                        localStorage.setItem('scale', settings.scale);
+                    }
+                    if (settings.is24HourFormat !== null) {
+                        is24HourFormat = JSON.parse(settings.is24HourFormat);
+                        document.getElementById('timeFormatButton').textContent = is24HourFormat ? '24時間表記' : '12時間表記';
+                        updateClock();
+                        localStorage.setItem('is24HourFormat', settings.is24HourFormat);
+                    }
+                } else if (extension === 'cmec2') {
+                    importElementFromCMEC2(contents);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function importElementFromCMEC2(contents) {
+            const elementContainer = document.createElement('div');
+            elementContainer.innerHTML = contents;
+            document.body.appendChild(elementContainer.firstElementChild);
+        }
+
+        document.querySelectorAll('#clock, .timer, #calendar, #batteryStatus').forEach(el => {
+            el.addEventListener('mousedown', (e) => {
+                draggedElement = e.target;
+                offsetX = e.clientX - draggedElement.getBoundingClientRect().left;
+                offsetY = e.clientY - draggedElement.getBoundingClientRect().top;
+                draggedElement.style.cursor = 'grabbing';
+            });
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (draggedElement) {
+                draggedElement.style.left = `${e.clientX - offsetX}px`;
+                draggedElement.style.top = `${e.clientY - offsetY}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (draggedElement) {
+                draggedElement.style.cursor = 'grab';
+                draggedElement = null;
+                savePositions();
+            }
+        });
+
+        function savePositions() {
+            const positions = {};
+            document.querySelectorAll('#clock, .timer, #calendar, #batteryStatus').forEach(el => {
+                positions[el.id] = { left: el.style.left, top: el.style.top };
+            });
+            localStorage.setItem('positions', JSON.stringify(positions));
+        }
+
+        function applySavedPositions() {
+            const positions = JSON.parse(localStorage.getItem('positions'));
+            for (const id in positions) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.left = positions[id].left;
+                    el.style.top = positions[id].top;
+                }
+            }
+        }
+
+        applySavedPositions();
+
+        // Calendar
+        function generateCalendar() {
+            const now = new Date();
+            const month = now.getMonth();
+            const year = now.getFullYear();
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let calendarHtml = '<table>';
+            calendarHtml += '<tr><th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr>';
+            calendarHtml += '<tr>';
+
+            for (let i = 0; i < firstDay; i++) {
+                calendarHtml += '<td></td>';
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                if ((day + firstDay - 1) % 7 === 0) {
+                    calendarHtml += '</tr><tr>';
+                }
+                const todayClass = day === now.getDate() ? ' class="today"' : '';
+                calendarHtml += `<td${todayClass}>${day}</td>`;
+            }
+
+            calendarHtml += '</tr></table>';
+            document.getElementById('calendar').innerHTML = calendarHtml;
+        }
+
+        generateCalendar();
+
+        // Battery Status
+        async function updateBatteryStatus() {
+            const battery = await navigator.getBattery();
+            battery.addEventListener('levelchange', () => {
+                document.getElementById('batteryPercentage').textContent = `${Math.round(battery.level * 100)}%`;
+                document.getElementById('batteryLevelBar').style.width = `${battery.level * 100}%`;
+            });
+            battery.addEventListener('chargingchange', () => {
+                document.getElementById('batteryPercentage').textContent = battery.charging ? '充電中' : '';
+            });
+            document.getElementById('batteryPercentage').textContent = `${Math.round(battery.level * 100)}%`;
+            document.getElementById('batteryLevelBar').style.width = `${battery.level * 100}%`;
+        }
+
+        updateBatteryStatus();
+        setInterval(updateBatteryStatus, 1000);
+
+        // Timer
+        function addTimer() {
+            const timer = document.createElement('div');
+            timer.className = 'timer';
+            timer.style.left = '20px';
+            timer.style.top = '20px';
+            timer.innerHTML = `
+                <input type="number" value="0" min="0" step="1" style="width: 60px;">
+                <button onclick="startTimer(this.previousElementSibling)">Start</button>
+            `;
+            document.body.appendChild(timer);
+            savePositions();
+        }
+
+        function startTimer(input) {
+            let time = parseInt(input.value, 10);
+            const timerId = setInterval(() => {
+                if (time <= 0) {
+                    clearInterval(timerId);
+                    input.value = 0;
+                } else {
+                    time--;
+                    input.value = time;
+                }
+            }, 1000);
+        }
+
+        // MOD import
+        function importMod() {
+            document.getElementById('importFileInput').click();
+        }
+
+        document.getElementById('importModButton').addEventListener('click', importMod);
+    </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ドラッグ可能なDIV要素</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            position: relative;
+            overflow: hidden;
+        }
+        .draggable {
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 1.5rem;
+            position: absolute;
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+    <div class="draggable" id="draggable">
+        ドラッグ可能なDIV
+    </div>
+
+    <script>
+        const draggable = document.getElementById('draggable');
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        draggable.addEventListener('mousedown', (event) => {
+            if (event.ctrlKey && event.button === 0) {
+                isDragging = true;
+                offsetX = event.clientX - draggable.getBoundingClientRect().left;
+                offsetY = event.clientY - draggable.getBoundingClientRect().top;
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+        });
+
+        function onMouseMove(event) {
+            if (isDragging) {
+                draggable.style.left = `${event.clientX - offsetX}px`;
+                draggable.style.top = `${event.clientY - offsetY}px`;
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+    </script>
+</body>
+</html>

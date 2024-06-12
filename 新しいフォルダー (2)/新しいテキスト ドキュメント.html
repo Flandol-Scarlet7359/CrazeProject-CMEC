@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム時計とタイマー</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            position: relative;
+            min-height: 100vh;
+        }
+        #clock, .timer, #calendar, #batteryStatus {
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            position: absolute;
+            cursor: grab;
+        }
+        #clock {
+            font-size: 2em;
+        }
+        .timer input {
+            margin-right: 10px;
+        }
+        #settingsButton, #addTimerButton {
+            position: absolute;
+            bottom: 20px;
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #settingsButton {
+            left: 20px;
+        }
+        #addTimerButton {
+            left: 150px;
+        }
+        #settingsDialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        #settingsDialog label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #closeSettingsButton, #resetSettingsButton, #exportSettingsButton, #importSettingsButton {
+            background-color: #dc3545;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #resetSettingsButton {
+            background-color: #6c757d;
+        }
+        #exportSettingsButton {
+            background-color: #28a745;
+        }
+        #importSettingsButton {
+            background-color: #ffc107;
+        }
+        #calendar {
+            font-size: 0.8em;
+            max-width: 300px;
+        }
+        #calendar table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #calendar th, #calendar td {
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        #calendar .today {
+            background-color: #007bff;
+            color: #ffffff;
+            border-radius: 50%;
+        }
+        #batteryStatus {
+            font-size: 0.8em;
+            max-width: 200px;
+        }
+        #batteryLevel {
+            width: 100%;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 10px;
+        }
+        #batteryLevelBar {
+            height: 100%;
+            background-color: #007bff;
+            width: 0;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock">00:00:00</div>
+    
+    <div id="timers"></div>
+    
+    <button id="settingsButton">設定</button>
+    <button id="addTimerButton" onclick="addTimer()">タイマーを追加</button>
+    
+    <div id="settingsDialog">
+       <h2>設定</h2>
+        <label>
+            背景色：
+            <input type="color" id="bgColorPicker">
+        </label>
+        <label>
+            UIの表示スケール：
+            <input type="range" id="scaleRange" min="50" max="200" step="10" value="100">
+        </label>
+        <label>
+            時間形式：
+            <button id="timeFormatButton">24時間表記</button>
+        </label>
+        <button id="resetSettingsButton" onclick="resetSettings()">リセット</button>
+        <button id="exportSettingsButton" onclick="exportSettings()">設定を書き出し</button>
+        <button id="importSettingsButton" onclick="importSettings()">設定をインポート</button>
+        <input type="file" id="importFileInput" style="display: none;" accept=".cmec1, .cmec2">
+        <button id="closeSettingsButton" onclick="closeSettings()">閉じる</button>
+    </div>
+    
+    <div id="calendar"></div>
+    <div id="batteryStatus">
+       バッテリー残量: <span id="batteryPercentage">0%</span>
+        <div id="batteryLevel">
+            <div id="batteryLevelBar"></div>
+        </div>
+    </div>
+    
+    <input type="file" id="importFileInput" style="display: none;" accept=".cmec1, .cmec2">
+    
+    <script>
+        let is24HourFormat = true;
+        let draggedElement = null;
+        let offsetX, offsetY;
+        let removedElements = JSON.parse(localStorage.getItem('removedElements')) || [];
+
+        function updateClock() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            let period = "";
+
+            if (!is24HourFormat) {
+                period = hours >= 12 ? ' PM' : ' AM';
+                hours = hours % 12 || 12; // 0 should be displayed as 12
+            }
+            hours = String(hours).padStart(2, '0');
+
+            const formattedDate = `${year}年${month}月${date}日`;
+            const formattedTime = `${hours}時${minutes}分${seconds}秒${period}`;
+
+            document.getElementById('clock').textContent = `${formattedDate} ${formattedTime}`;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock(); // 初回呼び出し
+
+        document.getElementById('settingsButton').addEventListener('click', function() {
+            document.getElementById('settingsDialog').style.display = 'block';
+        });
+
+        document.getElementById('timeFormatButton').addEventListener('click', function() {
+            is24HourFormat = !is24HourFormat;
+            this.textContent = is24HourFormat ? '24時間表記' : '12時間表記';
+            updateClock();
+            localStorage.setItem('is24HourFormat', is24HourFormat);
+        });
+
+        document.getElementById('bgColorPicker').addEventListener('input', function() {
+            document.body.style.backgroundColor = this.value;
+            localStorage.setItem('bgColor', this.value);
+        });
+
+        document.getElementById('scaleRange').addEventListener('input', function() {
+            document.body.style.fontSize = `${this.value}%`;
+            localStorage.setItem('scale', this.value);
+        });
+
+        function closeSettings() {
+            document.getElementById('settingsDialog').style.display = 'none';
+        }
+
+        function resetSettings() {
+            localStorage.removeItem('bgColor');
+            localStorage.removeItem('scale');
+            localStorage.removeItem('is24HourFormat');
+            localStorage.removeItem('positions');
+            localStorage.removeItem('removedElements');
+            location.reload();
+        }
+
+        function exportSettings() {
+            const settings = {
+                bgColor: localStorage.getItem('bgColor'),
+                scale: localStorage.getItem('scale'),
+                is24HourFormat: localStorage.getItem('is24HourFormat'),
+                positions: localStorage.getItem('positions'),
+                removedElements: localStorage.getItem('removedElements')
+            };
+            const blob = new Blob([JSON.stringify(settings)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cmec_settings.cmec1';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function importSettings() {
+            document.getElementById('importFileInput').click();
+        }
+
+        document.getElementById('importFileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const extension = file.name.split('.').pop();
+
+                if (extension === 'cmec1') {
+                    const settings = JSON.parse(contents);
+                    if (settings.bgColor) {
+                        document.body.style.backgroundColor = settings.bgColor;
+                        localStorage.setItem('bgColor', settings.bgColor);
+                    }
+                    if (settings.scale) {
+                        document.body.style.fontSize = `${settings.scale}%`;
+                        localStorage.setItem('scale', settings.scale);
+                    }
+                    if (settings.is24HourFormat !== null) {
+                        is24HourFormat = JSON.parse(settings.is24HourFormat);
+                        document.getElementById('timeFormatButton').textContent = is24HourFormat ? '24時間表記' : '12時間表記';
+                        updateClock();
+                        localStorage.setItem('is24HourFormat', settings.is24HourFormat);
+                    }
+                    if (settings.positions) {
+                        localStorage.setItem('positions', settings.positions);
+                        applySavedPositions();
+                    }
+                    if (settings.removedElements) {
+                        localStorage.setItem('removedElements', settings.removedElements);
+                        applyRemovedElements();
+                    }
+                } else if (extension === 'cmec2') {
+                    importElementFromCMEC2(contents);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function importElementFromCMEC2(contents) {
+            const elementContainer = document.createElement('div');
+            elementContainer.innerHTML = contents;
+            document.body.appendChild(elementContainer.firstElementChild);
+        }
+
+        document.querySelectorAll('#clock, .timer, #calendar, #batteryStatus').forEach(el => {
+            if (!removedElements.includes(el.id)) {
+                el.addEventListener('mousedown', (e) => {
+                    draggedElement = e.target;
+                    offsetX = e.clientX - draggedElement.getBoundingClientRect().left;
+                    offsetY = e.clientY - draggedElement.getBoundingClientRect().top;
+                    draggedElement.style.cursor = 'grabbing';
+                });
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (draggedElement) {
+                draggedElement.style.left = `${e.clientX - offsetX}px`;
+                draggedElement.style.top = `${e.clientY - offsetY}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (draggedElement) {
+                draggedElement.style.cursor = 'grab';
+                draggedElement = null;
+                savePositions();
+            }
+        });
+
+        function savePositions() {
+            const positions = {};
+            document.querySelectorAll('#clock, .timer, #calendar, #batteryStatus').forEach(el => {
+                if (!removedElements.includes(el.id)) {
+                    positions[el.id] = { left: el.style.left, top: el.style.top };
+                }
+            });
+            localStorage.setItem('positions', JSON.stringify(positions));
+        }
+
+        function applySavedPositions() {
+            const positions = JSON.parse(localStorage.getItem('positions'));
+            for (const id in positions) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.left = positions[id].left;
+                    el.style.top = positions[id].top;
+                }
+            }
+        }
+
+        function applyRemovedElements() {
+            removedElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.remove();
+                }
+            });
+        }
+
+        applySavedPositions();
+        applyRemovedElements();
+
+        // Calendar
+        function generateCalendar() {
+            const now = new Date();
+            const month = now.getMonth();
+            const year = now.getFullYear();
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+
+            const calendarEl = document.getElementById('calendar');
+            calendarEl.innerHTML = '<h3>カレンダー</h3>';
+
+            const table = document.createElement('table');
+            const headerRow = document.createElement('tr');
+            ['日', '月', '火', '水', '木', '金', '土'].forEach(day => {
+                const th = document.createElement('th');
+                th.textContent = day;
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            let row = document.createElement('tr');
+            for (let i = 0; i < firstDay; i++) {
+                row.appendChild(document.createElement('td'));
+            }
+
+            for (let date = 1; date <= lastDate; date++) {
+                if (row.children.length === 7) {
+                    table.appendChild(row);
+                    row = document.createElement('tr');
+                }
+                const cell = document.createElement('td');
+                cell.textContent = date;
+                if (date === now.getDate()) {
+                    cell.classList.add('today');
+                }
+                row.appendChild(cell);
+            }
+
+            while (row.children.length < 7) {
+                row.appendChild(document.createElement('td'));
+            }
+            table.appendChild(row);
+            calendarEl.appendChild(table);
+        }
+
+        generateCalendar();
+
+        // Battery Status
+        function updateBatteryStatus() {
+            navigator.getBattery().then(battery => {
+                const level = battery.level * 100;
+                document.getElementById('batteryPercentage').textContent = `${level}%`;
+                const batteryLevelBar = document.getElementById('batteryLevelBar');
+                batteryLevelBar.style.width = `${level}%`;
+
+                let color = '#007bff';
+                if (level <= 20) {
+                    color = '#dc3545';
+                } else if (level <= 50) {
+                    color = '#ffc107';
+                }
+                batteryLevelBar.style.backgroundColor = color;
+            });
+        }
+
+        updateBatteryStatus();
+        setInterval(updateBatteryStatus, 60000);
+
+        // Timer Functionality
+        let timerCount = 0;
+
+        function addTimer() {
+            const timer = document.createElement('div');
+            timer.className = 'timer';
+            timer.id = `timer${timerCount}`;
+            timerCount++;
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = '0';
+            input.placeholder = '秒';
+            timer.appendChild(input);
+
+            const button = document.createElement('button');
+            button.textContent = '開始';
+            button.addEventListener('click', () => {
+                const seconds = parseInt(input.value);
+                if (isNaN(seconds) || seconds <= 0) return;
+
+                const endTime = Date.now() + seconds * 1000;
+                button.disabled = true;
+                input.disabled = true;
+
+                const interval = setInterval(() => {
+                    const remaining = Math.round((endTime - Date.now()) / 1000);
+                    if (remaining <= 0) {
+                        clearInterval(interval);
+                        timer.textContent = 'タイマー終了';
+                    } else {
+                        timer.textContent = `残り: ${remaining}秒`;
+                    }
+                }, 1000);
+            });
+            timer.appendChild(button);
+
+            document.getElementById('timers').appendChild(timer);
+        }
+    </script>
+</body>
+</html>

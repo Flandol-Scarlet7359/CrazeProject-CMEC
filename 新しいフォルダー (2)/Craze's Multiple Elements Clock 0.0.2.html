@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム時計とタイマー</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            position: relative;
+            min-height: 100vh;
+        }
+        #clock {
+            font-size: 2em;
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .timer {
+            background-color: #ffffff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .timer input {
+            margin-right: 10px;
+        }
+        #settingsButton {
+            position: absolute;
+            bottom: 80px; /* 少し上げるために調整 */
+            left: 20px;
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #timeFormatButton {
+            position: absolute;
+            bottom: 80px; /* 少し上げるために調整 */
+            left: 160px;
+            background-color: #28a745;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #settingsDialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        #settingsDialog label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #addTimerButton {
+            background-color: #17a2b8;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock"></div>
+    
+    <div id="timers"></div>
+    
+    <button id="addTimerButton" onclick="addTimer()">タイマーを追加</button>
+    
+    <button id="settingsButton">設定</button>
+    <button id="timeFormatButton">24時間表記</button>
+    
+    <div id="settingsDialog">
+        <h2>設定</h2>
+        <label>
+            背景色：
+            <input type="color" id="bgColorPicker">
+        </label>
+        <label>
+            UIの表示スケール：
+            <input type="range" id="scaleRange" min="50" max="200" step="10" value="100">
+        </label>
+        <button onclick="applySettings()">適用</button>
+    </div>
+    
+    <script>
+        let is24HourFormat = true;
+
+        function updateClock() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            let period = "";
+
+            if (!is24HourFormat) {
+                period = hours >= 12 ? ' PM' : ' AM';
+                hours = hours % 12 || 12; // 0 should be displayed as 12
+            }
+            hours = String(hours).padStart(2, '0');
+
+            const formattedDate = `${year}年${month}月${date}日`;
+            const formattedTime = `${hours}時${minutes}分${seconds}秒${period}`;
+
+            document.getElementById('clock').textContent = `${formattedDate} ${formattedTime}`;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock(); // 初回呼び出し
+
+        document.getElementById('settingsButton').addEventListener('click', function() {
+            document.getElementById('settingsDialog').style.display = 'block';
+        });
+
+        document.getElementById('timeFormatButton').addEventListener('click', function() {
+            is24HourFormat = !is24HourFormat;
+            this.textContent = is24HourFormat ? '24時間表記' : '12時間表記';
+            updateClock();
+        });
+
+        function applySettings() {
+            const bgColor = document.getElementById('bgColorPicker').value;
+            const scaleValue = document.getElementById('scaleRange').value;
+            
+            document.body.style.backgroundColor = bgColor;
+            document.body.style.fontSize = `${scaleValue}%`;
+            
+            document.getElementById('settingsDialog').style.display = 'none';
+        }
+
+        function addTimer() {
+            const timerContainer = document.createElement('div');
+            timerContainer.className = 'timer';
+            
+            const inputHours = document.createElement('input');
+            inputHours.type = 'number';
+            inputHours.placeholder = '時';
+            inputHours.min = 0;
+
+            const inputMinutes = document.createElement('input');
+            inputMinutes.type = 'number';
+            inputMinutes.placeholder = '分';
+            inputMinutes.min = 0;
+            
+            const inputSeconds = document.createElement('input');
+            inputSeconds.type = 'number';
+            inputSeconds.placeholder = '秒';
+            inputSeconds.min = 0;
+
+            const startButton = document.createElement('button');
+            startButton.textContent = 'スタート';
+            startButton.onclick = function() {
+                const hours = parseInt(inputHours.value) || 0;
+                const minutes = parseInt(inputMinutes.value) || 0;
+                const seconds = parseInt(inputSeconds.value) || 0;
+                const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+                startTimer(timerContainer, totalSeconds);
+            };
+
+            timerContainer.appendChild(inputHours);
+            timerContainer.appendChild(inputMinutes);
+            timerContainer.appendChild(inputSeconds);
+            timerContainer.appendChild(startButton);
+            document.getElementById('timers').appendChild(timerContainer);
+        }
+
+        function startTimer(container, totalSeconds) {
+            let remainingSeconds = totalSeconds;
+            
+            const interval = setInterval(() => {
+                if (remainingSeconds <= 0) {
+                    clearInterval(interval);
+                    container.textContent = 'タイマー終了';
+                } else {
+                    remainingSeconds--;
+                    const hours = Math.floor(remainingSeconds / 3600);
+                    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                    const seconds = remainingSeconds % 60;
+                    container.textContent = `残り時間: ${String(hours).padStart(2, '0')}時 ${String(minutes).padStart(2, '0')}分 ${String(seconds).padStart(2, '0')}秒`;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
