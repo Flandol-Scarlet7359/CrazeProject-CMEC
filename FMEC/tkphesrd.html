@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analog Clock</title>
+<style>
+    .clock {
+        width: 200px;
+        height: 200px;
+        border: 6px solid #000;
+        border-radius: 50%;
+        position: relative;
+        margin: 20px auto;
+        background-color: #f2f2f2;
+    }
+    .hour,
+    .minute,
+    .second {
+        position: absolute;
+        width: 50%;
+        height: 2px;
+        background: #000;
+        top: 50%;
+        transform-origin: 100%;
+        transform: rotate(90deg);
+    }
+    .hour {
+        transform: rotate(90deg);
+    }
+    .minute {
+        transform: rotate(90deg);
+    }
+    .second {
+        width: 45%;
+        background: red;
+        transform: rotate(90deg);
+    }
+</style>
+</head>
+<body>
+<div class="clock">
+    <div class="hour" id="hour"></div>
+    <div class="minute" id="minute"></div>
+    <div class="second" id="second"></div>
+</div>
+
+<script>
+    function analogClock() {
+        const date = new Date();
+        let hours = date.getHours();
+        let minutes = date.getMinutes();
+        let seconds = date.getSeconds();
+
+        // Calculate angles for hour, minute, and second hands
+        let hourAngle = (hours % 12) * 30 + minutes / 2; // 30 degrees per hour, 0.5 degrees per minute
+        let minuteAngle = minutes * 6; // 6 degrees per minute
+        let secondAngle = seconds * 6; // 6 degrees per second
+
+        // Apply rotation to the hands
+        document.getElementById('hour').style.transform = `rotate(${hourAngle}deg)`;
+        document.getElementById('minute').style.transform = `rotate(${minuteAngle}deg)`;
+        document.getElementById('second').style.transform = `rotate(${secondAngle}deg)`;
+    }
+
+    // Update every second
+    setInterval(analogClock, 1000);
+    
+    // Initial call to set initial hand positions
+    analogClock();
+</script>
+</body>
+</html>

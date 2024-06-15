@@ -1,0 +1,10 @@
+{
+ Data {All.Tokyo}
+     {
+      Data {"13.563"},{Name:Temp.Akiruno}
+      Data {"14.794"},{Name:Temp.Asahi}
+      Data {"17.009"},{Name:Temp.Adachi}
+      Data {"16.784"},{Name:Temp.Asagaya}
+      Data {"16.376"},{Name:Temp.Nerima}
+     }
+}

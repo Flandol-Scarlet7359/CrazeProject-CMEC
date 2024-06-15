@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open-Meteo Temperature Info</title>
+<script>
+    // Function to fetch temperature data from Open-Meteo API
+    async function fetchTemperature() {
+        try {
+            // Replace 'YOUR_CITY' with the city name or coordinates you want to fetch data for
+            const city = 'Tokyo';
+            const apiUrl = `https://api.open-meteo.com/v1/forecast?city=${city}&hourly=temperature_2m&current_weather=true&apikey=${apiKey}`;
+
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+
+            // Extract current temperature from JSON response
+            const currentTemp = data.current_weather.temperature_2m;
+
+            // Display temperature on the webpage
+            document.getElementById('temperature').textContent = `Current Temperature in ${city}: ${currentTemp} °C`;
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            document.getElementById('temperature').textContent = 'Error fetching temperature data';
+        }
+    }
+
+    // Call fetchTemperature function when the page loads
+    window.onload = fetchTemperature;
+</script>
+</head>
+<body>
+    <h1>Open-Meteo Temperature Information</h1>
+    <div id="temperature"></div>
+</body>
+</html>

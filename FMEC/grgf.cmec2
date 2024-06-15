@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Calendar Events</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .event {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .event h3 {
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+        .event p {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google Calendar Events</h1>
+    <div id="eventsList"></div>
+
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script>
+        // Google Calendar API 用のクライアント ID と API キー
+        const CLIENT_ID = 'YOUR_CLIENT_ID';
+        const API_KEY = 'YOUR_API_KEY';
+        const CALENDAR_ID = 'YOUR_CALENDAR_ID'; // 表示したいカレンダーの ID
+
+        // 認証および API ロード
+        gapi.load('client', initClient);
+
+        function initClient() {
+            gapi.client.init({
+                apiKey: API_KEY,
+                clientId: CLIENT_ID,
+                discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"],
+                scope: 'https://www.googleapis.com/auth/calendar.readonly'
+            }).then(function() {
+                // API が正常に初期化されたらカレンダーのイベントを取得
+                listUpcomingEvents();
+            }, function(error) {
+                console.error('API の初期化に失敗しました', error);
+            });
+        }
+
+        function listUpcomingEvents() {
+            gapi.client.calendar.events.list({
+                'calendarId': CALENDAR_ID,
+                'timeMin': (new Date()).toISOString(),
+                'showDeleted': false,
+                'singleEvents': true,
+                'maxResults': 10,
+                'orderBy': 'startTime'
+            }).then(function(response) {
+                const events = response.result.items;
+                const eventsList = document.getElementById('eventsList');
+
+                events.forEach(event => {
+                    const eventElement = document.createElement('div');
+                    eventElement.classList.add('event');
+
+                    const eventName = document.createElement('h3');
+                    eventName.textContent = event.summary;
+
+                    const eventDescription = document.createElement('p');
+                    eventDescription.textContent = event.description || '詳細なし';
+
+                    const eventStart = document.createElement('p');
+                    const start = event.start.dateTime || event.start.date;
+                    eventStart.textContent = `開始日時: ${new Date(start).toLocaleString()}`;
+
+                    eventElement.appendChild(eventName);
+                    eventElement.appendChild(eventDescription);
+                    eventElement.appendChild(eventStart);
+
+                    eventsList.appendChild(eventElement);
+                });
+            }, function(error) {
+                console.error('イベントの取得に失敗しました', error);
+            });
+        }
+    </script>
+</body>
+</html>
